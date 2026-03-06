@@ -1,0 +1,1 @@
+using PredictorService as service from '../../srv/predictor-service';

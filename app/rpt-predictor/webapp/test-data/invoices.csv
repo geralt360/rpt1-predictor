@@ -1,0 +1,7 @@
+invoice_id,customer_id,amount,PAID_LATE
+1,C001,45000,Yes
+2,C002,12000,No
+3,C003,78000,Yes
+4,C001,23000,No
+5,C004,91000,Yes
+6,C005,15000,

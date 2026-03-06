@@ -1,0 +1,91 @@
+<mvc:View
+    controllerName="rptpredictor.rptpredictor.controller.RPTView"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    xmlns:l="sap.ui.layout"
+    xmlns:f="sap.ui.layout.form"
+    xmlns:u="sap.ui.unified"
+    xmlns:core="sap.ui.core">
+
+    <Page id="mainPage" title="RPT-1 CSV Predictor" class="sapUiContentPadding">
+        <content>
+            <VBox id="mainBox" class="sapUiMediumMargin">
+
+                <!-- Step 1: Upload -->
+                <Title id="titleUpload" text="Step 1 — Upload Your CSV Files" level="H3"/>
+                <Text id="uploadHint" text="Select one file for single-table prediction, or multiple files to join tables." class="sapUiSmallMarginBottom"/>
+                <u:FileUploader
+                    id="fileUploader"
+                    placeholder="Select CSV file(s)..."
+                    fileType="csv"
+                    multiple="true"
+                    width="50%"
+                    change="onFilesSelected"/>
+
+                <!-- Step 2: Relationship Mapper (hidden until 2+ files) -->
+                <VBox id="relationshipBox" visible="false" class="sapUiMediumMarginTop">
+                    <Title id="titleRelationship" text="Step 2 — Connect Your Files" level="H3"/>
+                    <Text id="relationshipHint" text="Select which column in each file links them together." class="sapUiSmallMarginBottom"/>
+
+                    <HBox id="mapperBox" alignItems="Center" justifyContent="SpaceBetween">
+
+                        <!-- File A Columns -->
+                        <VBox id="fileABox" width="35%">
+                            <Title id="titleFileA" text="File A" level="H5"/>
+                            <List id="columnsListA" mode="SingleSelectMaster" selectionChange="onColumnASelected">
+                            </List>
+                        </VBox>
+
+                        <!-- Arrow in the middle -->
+                        <VBox id="arrowBox" width="20%" alignItems="Center">
+                            <core:Icon id="_IDGenIcon" src="sap-icon://arrow-right" size="2rem" color="#0070F2"/>
+                            <Text id="joinIndicator" text="joins on" class="sapUiSmallMarginTop"/>
+                            <Text id="joinColumnsText" text="— select columns —" class="sapUiSmallMarginTop"/>
+                        </VBox>
+
+                        <!-- File B Columns -->
+                        <VBox id="fileBBox" width="35%">
+                            <Title id="titleFileB" text="File B" level="H5"/>
+                            <List id="columnsListB" mode="SingleSelectMaster" selectionChange="onColumnBSelected">
+                            </List>
+                        </VBox>
+
+                    </HBox>
+                </VBox>
+
+                <!-- Step 3: Pick Target Column -->
+                <VBox id="targetBox" visible="false" class="sapUiMediumMarginTop">
+                    <Title id="titleTarget" text="Step 3 — What Do You Want to Predict?" level="H3"/>
+                    <Text id="targetHint" text="Select the column whose missing values you want RPT-1 to fill in." class="sapUiSmallMarginBottom"/>
+                    <Select id="targetColumnSelect" width="50%">
+                        <items>
+                            <core:Item id="_IDGenItem" xmlns:core="sap.ui.core" key="" text="-- Select a column --"/>
+                        </items>
+                    </Select>
+                </VBox>
+
+                <!-- Run Button -->
+                <Button
+                    id="runButton"
+                    text="Run Prediction"
+                    type="Emphasized"
+                    press="onRunPrediction"
+                    visible="false"
+                    class="sapUiMediumMarginTop"
+                    icon="sap-icon://initiative"/>
+                
+                <!-- Results Table -->
+                <!-- Results Table -->
+                <VBox id="resultsBox" visible="false" class="sapUiMediumMarginTop">
+                    <Title id="titleResults" text="Prediction Results" level="H3"/>
+                    <Text id="resultsHint" text="Predicted values are highlighted in blue." class="sapUiSmallMarginBottom"/>
+                    <Table id="resultsTable" class="sapUiSmallMarginTop" growing="true" growingThreshold="20">
+                        <columns>
+                        </columns>
+                    </Table>
+                </VBox>
+            </VBox>
+        </content>
+    </Page>
+
+</mvc:View>

@@ -1,0 +1,22 @@
+{
+  "name": "rpt1-predictor",
+  "version": "1.0.0",
+  "description": "SAP RPT-1 CSV Predictor",
+  "scripts": {
+    "start": "cds-serve",
+    "watch": "cds watch",
+    "watch-rpt-predictor": "cds watch --open rptpredictor.rptpredictor/index.html?sap-ui-xx-viewCache=false --livereload false"
+  },
+  "dependencies": {
+    "@sap/cds": "^9",
+    "dotenv": "^17.3.1",
+    "express": "^4"
+  },
+  "devDependencies": {
+    "@sap/cds-dk": "^9",
+    "cds-plugin-ui5": "^0.13.0"
+  },
+  "workspaces": [
+    "app/*"
+  ]
+}

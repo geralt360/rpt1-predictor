@@ -1,0 +1,23 @@
+{
+  "generationParameters": {
+    "generationDate": "Thu Mar 05 2026 22:55:34 GMT-0500 (Eastern Standard Time)",
+    "generatorPlatform": "Visual Studio Code",
+    "serviceType": "Local CAP",
+    "metadataFilename": "",
+    "serviceUrl": "http://localhost:4004/odata/v4/predictor/",
+    "appName": "rpt-predictor",
+    "appTitle": "RPT-Predictor",
+    "appDescription": "An SAP Fiori application.",
+    "appNamespace": "rptpredictor",
+    "ui5Theme": "sap_horizon",
+    "ui5Version": "1.145.0",
+    "enableEslint": false,
+    "enableTypeScript": false,
+    "showMockDataInfo": false,
+    "generatorVersion": "1.20.4",
+    "template": "Basic V4",
+    "generatorName": "SAP Fiori Application Generator",
+    "entityRelatedConfig": [],
+    "launchText": "To launch the generated app, start your CAP project:  and navigate to the following location in your browser:\n\nhttp://localhost:4004/rpt-predictor/webapp/index.html"
+  }
+}
