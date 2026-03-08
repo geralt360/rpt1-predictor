@@ -1,1 +1,218 @@
-/* Enter your custom styles here */
+/* =============================================================
+   RPT-1 Predictor  ·  Custom Stylesheet
+   ============================================================= */
+
+/* --- Page background ---------------------------------------- */
+.sapMPageBgStandard {
+    background-color: #F0F3F7 !important;
+}
+
+/* Centre + constrain the content column */
+#mainBox {
+    max-width: 1280px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* =============================================================
+   Step Cards  (shared by every workflow step)
+   ============================================================= */
+.rptStepCard {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.07);
+    border-left: 4px solid #0070F2;
+    padding: 1.5rem 1.75rem !important;
+    margin-top: 1.25rem !important;
+    margin-bottom: 0 !important;
+    transition: box-shadow 0.2s ease;
+}
+
+.rptStepCard:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 8px 28px rgba(0, 0, 0, 0.09);
+}
+
+/* Title inside a step card */
+.rptStepCard .sapMTitle {
+    font-size: 1.0625rem !important;
+    font-weight: 700 !important;
+    color: #0F1728 !important;
+}
+
+/* Accent colour per step */
+.rptUploadCard  { border-left-color: #0070F2; }
+.rptMapCard     { border-left-color: #5A28B4; }
+.rptPreviewCard { border-left-color: #107E3E; }
+.rptTargetCard  { border-left-color: #E76500; }
+.rptResultsCard { border-left-color: #BB0000; }
+
+/* =============================================================
+   Upload zone
+   ============================================================= */
+.rptUploadZone {
+    border: 2px dashed #C4D3E8;
+    border-radius: 10px;
+    padding: 1rem 1.25rem !important;
+    background: #F6F9FD;
+    margin-top: 0.75rem !important;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.rptUploadZone:hover {
+    border-color: #0070F2;
+    background: #EEF5FF;
+}
+
+/* =============================================================
+   Stat Cells  (Step 3 preview stats row)
+   ============================================================= */
+.rptStatCell {
+    background: #F4F7FC;
+    border: 1px solid #DDE5F0;
+    border-radius: 8px;
+    padding: 0.625rem 1rem !important;
+    margin-right: 0.75rem !important;
+}
+
+.rptStatCell .sapMLabel {
+    font-size: 0.6875rem !important;
+    color: #6B7280 !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+}
+
+.rptStatCell .sapMText {
+    font-size: 1.375rem !important;
+    font-weight: 700 !important;
+    color: #0070F2 !important;
+    margin-top: 0.125rem;
+}
+
+/* =============================================================
+   Summary Stat Tiles  (Results — Total / High / Medium / Low)
+   ============================================================= */
+.rptStatTile {
+    background: #F9FAFB;
+    border: 1px solid #E4EBF2;
+    border-top: 3px solid #B0C4DE;
+    border-radius: 10px;
+    padding: 0.875rem 1.125rem !important;
+    margin-right: 0.875rem !important;
+    min-width: 130px;
+    text-align: center;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.rptStatTile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+}
+
+.rptStatTile .sapMLabel {
+    font-size: 0.6875rem !important;
+    color: #6B7280 !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    display: block;
+    margin-bottom: 0.375rem;
+}
+
+.rptStatTile .sapMText {
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1 !important;
+    color: #374151 !important;
+}
+
+/* Colour variants */
+.rptStatTileHigh                  { border-top-color: #1A7F37 !important; }
+.rptStatTileHigh .sapMText        { color: #1A7F37 !important; }
+
+.rptStatTileMedium                { border-top-color: #C45A00 !important; }
+.rptStatTileMedium .sapMText      { color: #C45A00 !important; }
+
+.rptStatTileLow                   { border-top-color: #B00020 !important; }
+.rptStatTileLow .sapMText         { color: #B00020 !important; }
+
+/* =============================================================
+   Confidence filter row
+   ============================================================= */
+.rptFilterRow {
+    background: #F4F7FC;
+    border: 1px solid #DDE5F0;
+    border-radius: 8px;
+    padding: 0.5rem 0.875rem !important;
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+}
+
+/* =============================================================
+   Run Prediction button
+   ============================================================= */
+#runButton {
+    display: block !important;
+    width: fit-content !important;
+}
+
+.rptRunBtn .sapMBtnInner {
+    background: linear-gradient(135deg, #0070F2 0%, #0050C8 100%) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 0 2.25rem !important;
+    height: 2.875rem !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: 0 4px 14px rgba(0, 112, 242, 0.38) !important;
+    transition: transform 0.12s ease, box-shadow 0.15s ease !important;
+}
+
+.rptRunBtn:hover .sapMBtnInner {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 7px 22px rgba(0, 112, 242, 0.52) !important;
+}
+
+.rptRunBtn:active .sapMBtnInner {
+    transform: translateY(0) !important;
+    box-shadow: 0 2px 8px rgba(0, 112, 242, 0.3) !important;
+}
+
+/* =============================================================
+   Misc polish
+   ============================================================= */
+
+/* Tighten the page header title */
+.sapMPageHeader .sapMBarMiddle .sapMTitle {
+    font-weight: 700 !important;
+}
+
+/* Panel header text inside step cards */
+.rptStepCard .sapMPanelHdr {
+    font-weight: 600 !important;
+    font-size: 0.9375rem !important;
+    color: #374151 !important;
+}
+
+/* Loaded-files chip row label */
+#loadedFilesLabel .sapMLabelText {
+    font-weight: 700 !important;
+    color: #374151 !important;
+}
+
+/* Results hint text */
+#resultsHint {
+    font-size: 0.8125rem !important;
+    color: #6B7280 !important;
+    font-style: italic;
+}
+
+/* =============================================================
+   Preview section (inline expand inside mapper card)
+   ============================================================= */
+.rptPreviewSection {
+    border-top: 1px solid #DDE5F0;
+    margin-top: 1.25rem !important;
+    padding-top: 1rem !important;
+}

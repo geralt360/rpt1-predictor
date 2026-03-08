@@ -11,8 +11,9 @@ module.exports = cds.service.impl(async function () {
             return;
         }
 
+        let response;
         try {
-            const response = await fetch("https://rpt.cloud.sap/api/predict", {
+            response = await fetch("https://rpt.cloud.sap/api/predict", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -20,12 +21,19 @@ module.exports = cds.service.impl(async function () {
                 },
                 body: payload
             });
-
-            const result = await response.json();
-            return JSON.stringify(result);
-
         } catch (err) {
-            req.error(500, "RPT-1 API call failed: " + err.message);
+            req.error(503, "Network error calling RPT-1 API: " + err.message);
+            return;
         }
+
+        // Surface HTTP errors (401, 429, 500, etc.) so the client sees a real failure
+        if (!response.ok) {
+            const body = await response.text().catch(() => "");
+            req.error(response.status, `RPT-1 API returned ${response.status}: ${body}`);
+            return;
+        }
+
+        const result = await response.json();
+        return JSON.stringify(result);
     });
 });

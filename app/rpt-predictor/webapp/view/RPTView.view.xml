@@ -5,63 +5,264 @@
     xmlns:l="sap.ui.layout"
     xmlns:f="sap.ui.layout.form"
     xmlns:u="sap.ui.unified"
-    xmlns:core="sap.ui.core">
+    xmlns:core="sap.ui.core"
+    xmlns:t="sap.ui.table"
+    xmlns:rowmodes="sap.ui.table.rowmodes">
 
     <Page id="mainPage" title="RPT-1 CSV Predictor" class="sapUiContentPadding">
+        <headerContent>
+            <Button id="newPredictionBtn"
+                text="New Prediction"
+                icon="sap-icon://add"
+                type="Emphasized"
+                press="onNewPredictionPressed"/>
+        </headerContent>
         <content>
             <VBox id="mainBox" class="sapUiMediumMargin">
 
                 <!-- Step 1: Upload -->
+                <VBox id="uploadCard" class="rptStepCard rptUploadCard">
                 <Title id="titleUpload" text="Step 1 — Upload Your CSV Files" level="H3"/>
-                <Text id="uploadHint" text="Select one file for single-table prediction, or multiple files to join tables." class="sapUiSmallMarginBottom"/>
-                <u:FileUploader
-                    id="fileUploader"
-                    placeholder="Select CSV file(s)..."
-                    fileType="csv"
-                    multiple="true"
-                    width="50%"
-                    change="onFilesSelected"/>
+                <Text id="uploadHint" text="Select one or more CSV files. You can add more files at any time — already loaded files are kept." class="sapUiSmallMarginBottom"/>
 
-                <!-- Step 2: Relationship Mapper (hidden until 2+ files) -->
-                <VBox id="relationshipBox" visible="false" class="sapUiMediumMarginTop">
-                    <Title id="titleRelationship" text="Step 2 — Connect Your Files" level="H3"/>
-                    <Text id="relationshipHint" text="Select which column in each file links them together." class="sapUiSmallMarginBottom"/>
+                <!-- Loaded files chips -->
+                <HBox id="loadedFilesBox" visible="false" class="sapUiSmallMarginBottom" wrap="Wrap">
+                    <Label id="loadedFilesLabel" text="Loaded files:" design="Bold" class="sapUiSmallMarginEnd" wrapping="false"/>
+                    <FlexBox id="loadedFilesChips" wrap="Wrap"/>
+                </HBox>
 
-                    <HBox id="mapperBox" alignItems="Center" justifyContent="SpaceBetween">
-
-                        <!-- File A Columns -->
-                        <VBox id="fileABox" width="35%">
-                            <Title id="titleFileA" text="File A" level="H5"/>
-                            <List id="columnsListA" mode="SingleSelectMaster" selectionChange="onColumnASelected">
-                            </List>
-                        </VBox>
-
-                        <!-- Arrow in the middle -->
-                        <VBox id="arrowBox" width="20%" alignItems="Center">
-                            <core:Icon id="_IDGenIcon" src="sap-icon://arrow-right" size="2rem" color="#0070F2"/>
-                            <Text id="joinIndicator" text="joins on" class="sapUiSmallMarginTop"/>
-                            <Text id="joinColumnsText" text="— select columns —" class="sapUiSmallMarginTop"/>
-                        </VBox>
-
-                        <!-- File B Columns -->
-                        <VBox id="fileBBox" width="35%">
-                            <Title id="titleFileB" text="File B" level="H5"/>
-                            <List id="columnsListB" mode="SingleSelectMaster" selectionChange="onColumnBSelected">
-                            </List>
-                        </VBox>
-
-                    </HBox>
+                <HBox id="uploadRow" alignItems="Center" class="rptUploadZone">
+                    <u:FileUploader
+                        id="fileUploader"
+                        placeholder="Select CSV file(s) to add..."
+                        fileType="csv"
+                        multiple="true"
+                        width="400px"
+                        change="onFilesSelected"/>
+                    <Button id="clearFilesBtn"
+                        text="Clear all files"
+                        icon="sap-icon://delete"
+                        type="Reject"
+                        visible="false"
+                        press="onClearAllFiles"
+                        class="sapUiSmallMarginBegin"/>
+                </HBox>
                 </VBox>
 
-                <!-- Step 3: Pick Target Column -->
-                <VBox id="targetBox" visible="false" class="sapUiMediumMarginTop">
-                    <Title id="titleTarget" text="Step 3 — What Do You Want to Predict?" level="H3"/>
-                    <Text id="targetHint" text="Select the column whose missing values you want RPT-1 to fill in." class="sapUiSmallMarginBottom"/>
-                    <Select id="targetColumnSelect" width="50%">
-                        <items>
-                            <core:Item id="_IDGenItem" xmlns:core="sap.ui.core" key="" text="-- Select a column --"/>
-                        </items>
-                    </Select>
+                <!-- Step 2: Relationship Mapper (hidden until 2+ files) -->
+                <VBox id="relationshipBox" visible="false" class="rptStepCard rptMapCard">
+                    <Title id="titleRelationship" text="Step 2 — Connect &amp; Preview Your Files" level="H3"/>
+                    <Text id="_IDGenText1" text="Choose your primary file. Other files will join to it."
+                        class="sapUiSmallMarginBottom"/>
+
+                    <!-- Primary file picker -->
+                    <HBox id="_IDGenHBox" alignItems="Center" class="sapUiSmallMarginTop sapUiSmallMarginBottom">
+                        <Label id="_IDGenLabel" text="Primary file:" class="sapUiSmallMarginEnd" design="Bold"/>
+                        <Select id="primaryFileSelect" width="280px" change="onPrimaryFileChanged"/>
+                    </HBox>
+
+                    <!-- Links list — built dynamically by controller -->
+                    <VBox id="linksContainer" class="sapUiSmallMarginTop"/>
+
+                    <!-- Add manual link button -->
+                    <Button
+                        id="addLinkButton"
+                        text="＋ Add a link manually"
+                        press="onAddManualLink"
+                        class="sapUiSmallMarginTop"/>
+
+                    <!-- Inline edit/add panel — hidden until needed -->
+                    <Panel id="linkEditPanel" visible="false"
+                        headerText="Define a link" class="sapUiSmallMarginTop">
+                        <content>
+                            <HBox id="_IDGenHBox1" alignItems="End" class="sapUiSmallMargin" wrap="Wrap">
+                                <VBox id="_IDGenVBox" class="sapUiSmallMarginEnd">
+                                    <Label id="_IDGenLabel1" text="Primary file column"/>
+                                    <Select id="editPrimaryColSelect" width="180px"/>
+                                </VBox>
+                                <VBox id="_IDGenVBox1" class="sapUiSmallMarginEnd" alignItems="Center">
+                                    <Label id="_IDGenLabel2" text=" "/>
+                                    <core:Icon id="_IDGenIcon" src="sap-icon://arrow-right" size="1.5rem" color="#0070F2"/>
+                                </VBox>
+                                <VBox id="_IDGenVBox2" class="sapUiSmallMarginEnd">
+                                    <Label id="_IDGenLabel3" text="Secondary file"/>
+                                    <Select id="editSecondaryFileSelect" width="200px"
+                                            change="onEditSecondaryFileChanged"/>
+                                </VBox>
+                                <VBox id="_IDGenVBox3" class="sapUiSmallMarginEnd">
+                                    <Label id="_IDGenLabel4" text="Secondary file column"/>
+                                    <Select id="editSecondaryColSelect" width="180px"/>
+                                </VBox>
+                                <HBox id="_IDGenHBox2" class="sapUiSmallMarginEnd">
+                                    <Button id="_IDGenButton" text="Save" type="Emphasized"
+                                            press="onSaveLink" class="sapUiSmallMarginEnd"/>
+                                    <Button id="_IDGenButton1" text="Cancel" press="onCancelLink"/>
+                                </HBox>
+                            </HBox>
+                        </content>
+                    </Panel>
+
+                    <!-- Action buttons — shown once links are configured -->
+                    <HBox id="mapperActionsRow" alignItems="Center" class="sapUiMediumMarginTop">
+                        <Button
+                            id="proceedButton"
+                            text="Preview Joined Data"
+                            type="Ghost"
+                            icon="sap-icon://table-view"
+                            press="onProceedFromMapper"
+                            visible="false"/>
+                        <Button
+                            id="continueToTargetButton"
+                            text="Continue to Prediction →"
+                            type="Emphasized"
+                            icon="sap-icon://arrow-right"
+                            press="onContinueToTarget"
+                            visible="false"
+                            class="sapUiSmallMarginBegin"/>
+                    </HBox>
+
+                    <!-- Preview section — expands inline when Preview is clicked -->
+                    <VBox id="previewSection" visible="false" class="rptPreviewSection">
+
+                        <!-- Stats row -->
+                        <HBox id="_IDGenHBox3" class="sapUiSmallMarginTop sapUiSmallMarginBottom" wrap="Wrap">
+                            <VBox id="_IDGenVBox4" class="rptStatCell" width="140px">
+                                <Label id="_IDGenLabel5" text="Rows" design="Bold"/>
+                                <Text id="previewRowCount" text="—"/>
+                            </VBox>
+                            <VBox id="_IDGenVBox5" class="rptStatCell" width="140px">
+                                <Label id="_IDGenLabel6" text="Columns" design="Bold"/>
+                                <Text id="previewColCount" text="—"/>
+                            </VBox>
+                            <VBox id="_IDGenVBox6" class="rptStatCell" width="200px">
+                                <Label id="_IDGenLabel7" text="Files joined" design="Bold"/>
+                                <Text id="previewFilesCount" text="—"/>
+                            </VBox>
+                        </HBox>
+
+                        <!-- Column limit warnings -->
+                        <MessageStrip
+                            id="colWarnStrip"
+                            visible="false"
+                            type="Warning"
+                            showCloseButton="false"
+                            class="sapUiSmallMarginBottom"/>
+                        <MessageStrip
+                            id="colErrorStrip"
+                            visible="false"
+                            type="Error"
+                            showCloseButton="false"
+                            class="sapUiSmallMarginBottom"/>
+
+                        <!-- Blank rows warning -->
+                        <MessageStrip
+                            id="blankRowsStrip"
+                            visible="false"
+                            type="Warning"
+                            showCloseButton="false"
+                            class="sapUiSmallMarginBottom"/>
+
+                        <!-- Preview table -->
+                        <t:Table
+                            id="previewTable"
+                            selectionMode="None"
+                            enableColumnReordering="true"
+                            class="sapUiSmallMarginTop">
+                            <t:rowMode>
+                                <rowmodes:Fixed id="previewRowMode" rowCount="10"/>
+                            </t:rowMode>
+                            <t:extension>
+                                <OverflowToolbar id="previewToolbar">
+                                    <Title id="previewTableTitle" text="Data Preview" level="H4"/>
+                                    <ToolbarSpacer id="previewToolbarSpacer"/>
+                                    <SearchField id="previewSearchField" width="220px"
+                                        liveChange="onSearchPreview" placeholder="Search..."/>
+                                    <Button id="exportPreviewBtn" text="Export CSV"
+                                        icon="sap-icon://download" press="onExportPreviewCSV"/>
+                                </OverflowToolbar>
+                            </t:extension>
+                            <t:columns/>
+                        </t:Table>
+
+                    </VBox>
+                </VBox>
+
+                <!-- Step 4: Pick Target Column -->
+                <VBox id="targetBox" visible="false" class="rptStepCard rptTargetCard">
+                    <Title id="titleTarget" text="Step 4 — What Do You Want to Predict?" level="H3"/>
+                    <Text id="_IDGenText2" text="Select the column whose missing values RPT-1 should fill in."
+                        class="sapUiSmallMarginBottom"/>
+
+                    <!-- Target column selector -->
+                    <HBox id="_IDGenHBox4" alignItems="Center" class="sapUiSmallMarginTop">
+                        <Label id="_IDGenLabel8" text="Target column:" design="Bold" class="sapUiSmallMarginEnd"/>
+                        <Select id="targetColumnSelect" width="280px" change="onTargetColumnChange"/>
+                    </HBox>
+
+                    <!-- Auto-detected task type -->
+                    <HBox id="_IDGenHBox5" alignItems="Center" class="sapUiSmallMarginTop">
+                        <Label id="_IDGenLabel9" text="Task type:" design="Bold" class="sapUiSmallMarginEnd"/>
+                        <Text id="detectedTypeText" text="—" class="sapUiSmallMarginEnd"/>
+                        <SegmentedButton id="taskTypeOverride" selectionChange="onTypeOverrideChange">
+                            <items>
+                                <SegmentedButtonItem id="_IDGenSegmentedButtonItem" key="auto"           text="Auto"/>
+                                <SegmentedButtonItem id="_IDGenSegmentedButtonItem1" key="classification" text="Classification"/>
+                                <SegmentedButtonItem id="_IDGenSegmentedButtonItem2" key="regression"     text="Regression"/>
+                            </items>
+                        </SegmentedButton>
+                    </HBox>
+
+                    <!-- Prediction Plan panel -->
+                    <Panel
+                        id="predictionPlanPanel"
+                        visible="false"
+                        headerText="Prediction Plan"
+                        expandable="false"
+                        class="sapUiMediumMarginTop">
+                        <content>
+                            <VBox id="_IDGenVBox7" class="sapUiSmallMargin">
+                                <HBox id="_IDGenHBox6" class="sapUiSmallMarginBottom">
+                                    <Label id="_IDGenLabel10" text="Total rows:"
+                                        design="Bold" width="200px"/>
+                                    <Text id="planTotalRows" text="—"/>
+                                </HBox>
+                                <HBox id="_IDGenHBox7" class="sapUiSmallMarginBottom">
+                                    <Label id="_IDGenLabel11" text="Context rows (labeled):"
+                                        design="Bold" width="200px"/>
+                                    <Text id="planContextRows" text="—"/>
+                                </HBox>
+                                <HBox id="_IDGenHBox8" class="sapUiSmallMarginBottom">
+                                    <Label id="_IDGenLabel12" text="Rows to predict:"
+                                        design="Bold" width="200px"/>
+                                    <Text id="planPredictRows" text="—"/>
+                                </HBox>
+                                <HBox id="_IDGenHBox9" class="sapUiSmallMarginBottom">
+                                    <Label id="_IDGenLabel13" text="Context sent to RPT-1:"
+                                        design="Bold" width="200px"/>
+                                    <Text id="planContextSent" text="—"/>
+                                </HBox>
+                                <HBox id="_IDGenHBox10" class="sapUiSmallMarginBottom">
+                                    <Label id="_IDGenLabel14" text="Batches:"
+                                        design="Bold" width="200px"/>
+                                    <Text id="planBatches" text="—"/>
+                                </HBox>
+                                <HBox id="_IDGenHBox11">
+                                    <Label id="_IDGenLabel15" text="Sampling strategy:"
+                                        design="Bold" width="200px"/>
+                                    <Text id="planStrategy" text="—"/>
+                                </HBox>
+                            </VBox>
+                        </content>
+                    </Panel>
+
+                    <!-- Low context warning -->
+                    <MessageStrip
+                        id="lowContextStrip"
+                        text="⚠️ Fewer than 50 labeled rows. Predictions may be less accurate."
+                        type="Warning"
+                        visible="false"
+                        showCloseButton="false"
+                        class="sapUiSmallMarginTop"/>
                 </VBox>
 
                 <!-- Run Button -->
@@ -71,18 +272,73 @@
                     type="Emphasized"
                     press="onRunPrediction"
                     visible="false"
-                    class="sapUiMediumMarginTop"
+                    class="sapUiMediumMarginTop rptRunBtn"
                     icon="sap-icon://initiative"/>
                 
-                <!-- Results Table -->
-                <!-- Results Table -->
-                <VBox id="resultsBox" visible="false" class="sapUiMediumMarginTop">
-                    <Title id="titleResults" text="Prediction Results" level="H3"/>
-                    <Text id="resultsHint" text="Predicted values are highlighted in blue." class="sapUiSmallMarginBottom"/>
-                    <Table id="resultsTable" class="sapUiSmallMarginTop" growing="true" growingThreshold="20">
-                        <columns>
-                        </columns>
-                    </Table>
+                <!-- Results -->
+                <VBox id="resultsBox" visible="false" class="rptStepCard rptResultsCard">
+                    <Title id="titleResults" text="Step 6 — Prediction Results" level="H3"/>
+
+                    <!-- Summary card -->
+                    <HBox id="summaryCard" class="sapUiSmallMarginTop sapUiSmallMarginBottom" wrap="Wrap">
+                        <VBox id="summaryBoxTotal" class="rptStatTile" width="140px">
+                            <Label id="summaryLabelTotal" text="Total Predicted" design="Bold"/>
+                            <Text id="summaryTotal" text="—"/>
+                        </VBox>
+                        <VBox id="summaryBoxHigh" class="rptStatTile rptStatTileHigh" width="140px">
+                            <Label id="summaryLabelHigh" text="High (≥80%)" design="Bold"/>
+                            <Text id="summaryHigh" text="—"/>
+                        </VBox>
+                        <VBox id="summaryBoxMedium" class="rptStatTile rptStatTileMedium" width="140px">
+                            <Label id="summaryLabelMedium" text="Medium (55–79%)" design="Bold"/>
+                            <Text id="summaryMedium" text="—"/>
+                        </VBox>
+                        <VBox id="summaryBoxLow" class="rptStatTile rptStatTileLow" width="140px">
+                            <Label id="summaryLabelLow" text="Low (&lt;55%)" design="Bold"/>
+                            <Text id="summaryLow" text="—"/>
+                        </VBox>
+                    </HBox>
+
+                    <!-- Confidence filter + count -->
+                    <HBox id="filterRow" alignItems="Center" class="rptFilterRow sapUiSmallMarginTop sapUiSmallMarginBottom">
+                        <Label id="filterLabel" text="Show:" design="Bold" class="sapUiSmallMarginEnd"/>
+                        <Select id="confidenceFilter" width="180px" change="onConfidenceFilterChange">
+                            <items>
+                                <core:Item id="filterAll" key="all" text="All predictions"/>
+                                <core:Item id="filter50"  key="50"  text="50%+ confidence"/>
+                                <core:Item id="filter70"  key="70"  text="70%+ confidence"/>
+                                <core:Item id="filter90"  key="90"  text="90%+ confidence"/>
+                            </items>
+                        </Select>
+                        <Text id="filteredCountText" text="" class="sapUiSmallMarginBegin"/>
+                    </HBox>
+
+                    <Text id="resultsHint" text="Predicted values are in blue. Row colour: green ≥80%, orange 55–79%, red &lt;55%." class="sapUiSmallMarginBottom"/>
+
+                    <t:Table
+                        id="resultsTable"
+                        selectionMode="None"
+                        enableColumnReordering="true"
+                        class="sapUiSmallMarginTop">
+                        <t:rowMode>
+                            <rowmodes:Fixed id="resultsRowMode" rowCount="20"/>
+                        </t:rowMode>
+                        <t:extension>
+                            <OverflowToolbar id="resultsToolbar">
+                                <ToolbarSpacer id="resultsToolbarSpacer"/>
+                                <SearchField id="resultsSearchField" width="220px"
+                                    liveChange="onSearchResults" placeholder="Search results..."/>
+                                <Button id="exportExcelBtn" text="Export Excel"
+                                    icon="sap-icon://excel-attachment" press="onExportExcel"/>
+                                <Button id="exportCsvBtn" text="Export CSV"
+                                    icon="sap-icon://download" press="onDownloadCSV"/>
+                            </OverflowToolbar>
+                        </t:extension>
+                        <t:rowSettingsTemplate>
+                            <t:RowSettings id="resultsRowSettings" highlight="{results>_highlight}"/>
+                        </t:rowSettingsTemplate>
+                        <t:columns/>
+                    </t:Table>
                 </VBox>
             </VBox>
         </content>
