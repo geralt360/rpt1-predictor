@@ -11,6 +11,12 @@
 
     <Page id="mainPage" title="RPT-1 CSV Predictor" class="sapUiContentPadding">
         <headerContent>
+            <ToggleButton id="darkModeBtn"
+                icon="sap-icon://palette"
+                tooltip="Switch to dark mode"
+                pressed="false"
+                press="onToggleDarkMode"
+                class="sapUiSmallMarginEnd"/>
             <Button id="newPredictionBtn"
                 text="New Prediction"
                 icon="sap-icon://add"
@@ -20,38 +26,97 @@
         <content>
             <VBox id="mainBox" class="sapUiMediumMargin">
 
+                <!-- Step progress indicator -->
+                <HBox id="stepIndicator" class="rptStepIndicator" alignItems="Start">
+                    <VBox id="stepNode1" class="rptStepNode rptStepActive" alignItems="Center">
+                        <Text id="_IDGenText4" text="1" class="rptStepCircle"/>
+                        <Text id="_IDGenText5" text="Upload" class="rptStepLabel"/>
+                    </VBox>
+                    <core:Icon id="stepConn12" src="sap-icon://arrow-right" class="rptStepArrow"/>
+                    <VBox id="stepNode2" class="rptStepNode" alignItems="Center">
+                        <Text id="_IDGenText6" text="2" class="rptStepCircle"/>
+                        <Text id="_IDGenText7" text="Connect" class="rptStepLabel"/>
+                    </VBox>
+                    <core:Icon id="stepConn23" src="sap-icon://arrow-right" class="rptStepArrow"/>
+                    <VBox id="stepNode3" class="rptStepNode" alignItems="Center">
+                        <Text id="_IDGenText8" text="3" class="rptStepCircle"/>
+                        <Text id="_IDGenText9" text="Configure" class="rptStepLabel"/>
+                    </VBox>
+                    <core:Icon id="stepConn34" src="sap-icon://arrow-right" class="rptStepArrow"/>
+                    <VBox id="stepNode4" class="rptStepNode" alignItems="Center">
+                        <Text id="_IDGenText10" text="4" class="rptStepCircle"/>
+                        <Text id="_IDGenText11" text="Run" class="rptStepLabel"/>
+                    </VBox>
+                    <core:Icon id="stepConn45" src="sap-icon://arrow-right" class="rptStepArrow"/>
+                    <VBox id="stepNode5" class="rptStepNode" alignItems="Center">
+                        <Text id="_IDGenText12" text="5" class="rptStepCircle"/>
+                        <Text id="_IDGenText13" text="Results" class="rptStepLabel"/>
+                    </VBox>
+                </HBox>
+
                 <!-- Step 1: Upload -->
-                <VBox id="uploadCard" class="rptStepCard rptUploadCard">
-                <Title id="titleUpload" text="Step 1 — Upload Your CSV Files" level="H3"/>
-                <Text id="uploadHint" text="Select one or more CSV files. You can add more files at any time — already loaded files are kept." class="sapUiSmallMarginBottom"/>
+                <Panel id="uploadCard" expandable="true" expanded="true" class="rptStepCard rptUploadCard">
+                    <headerToolbar>
+                        <OverflowToolbar id="_IDGenOverflowToolbar1">
+                            <Title id="_IDGenTitle" text="Step 1 — Upload Your CSV Files" level="H3"/>
+                            <ToolbarSpacer id="_IDGenToolbarSpacer"/>
+                            <core:Icon id="step1DoneIcon" src="sap-icon://accept" color="#1a7f37" size="1rem" visible="false" class="sapUiSmallMarginEnd"/>
+                            <Text id="step1SummaryText" text="" visible="false"/>
+                        </OverflowToolbar>
+                    </headerToolbar>
+                    <content>
+                    <Text id="uploadHint" text="Select one or more CSV files. You can add more files at any time — already loaded files are kept." class="sapUiSmallMarginBottom"/>
 
-                <!-- Loaded files chips -->
-                <HBox id="loadedFilesBox" visible="false" class="sapUiSmallMarginBottom" wrap="Wrap">
-                    <Label id="loadedFilesLabel" text="Loaded files:" design="Bold" class="sapUiSmallMarginEnd" wrapping="false"/>
-                    <FlexBox id="loadedFilesChips" wrap="Wrap"/>
-                </HBox>
-
-                <HBox id="uploadRow" alignItems="Center" class="rptUploadZone">
-                    <u:FileUploader
-                        id="fileUploader"
-                        placeholder="Select CSV file(s) to add..."
-                        fileType="csv"
-                        multiple="true"
-                        width="400px"
-                        change="onFilesSelected"/>
-                    <Button id="clearFilesBtn"
-                        text="Clear all files"
-                        icon="sap-icon://delete"
-                        type="Reject"
+                    <!-- Last session reminder -->
+                    <MessageStrip
+                        id="lastSessionStrip"
+                        text=""
                         visible="false"
-                        press="onClearAllFiles"
-                        class="sapUiSmallMarginBegin"/>
-                </HBox>
-                </VBox>
+                        type="Information"
+                        showCloseButton="true"
+                        class="sapUiSmallMarginBottom"/>
+
+                    <!-- Loaded files chips -->
+                    <HBox id="loadedFilesBox" visible="false" class="sapUiSmallMarginBottom" wrap="Wrap">
+                        <Label id="loadedFilesLabel" text="Loaded files:" design="Bold" class="sapUiSmallMarginEnd" wrapping="false"/>
+                        <FlexBox id="loadedFilesChips" wrap="Wrap"/>
+                    </HBox>
+
+                    <HBox id="uploadRow" alignItems="Center" class="rptUploadZone">
+                        <u:FileUploader
+                            id="fileUploader"
+                            placeholder="Select CSV file(s) to add..."
+                            fileType="csv"
+                            multiple="true"
+                            width="400px"
+                            change="onFilesSelected"/>
+                        <Button id="clearFilesBtn"
+                            text="Clear all files"
+                            icon="sap-icon://delete"
+                            type="Reject"
+                            visible="false"
+                            press="onClearAllFiles"
+                            class="sapUiSmallMarginBegin"/>
+                    </HBox>
+
+                    <!-- File preview cards — one per loaded file -->
+                    <VBox id="fileCardsSection" visible="false" class="sapUiSmallMarginTop">
+                        <FlexBox id="fileCardsBox" wrap="Wrap"/>
+                    </VBox>
+                    </content>
+                </Panel>
 
                 <!-- Step 2: Relationship Mapper (hidden until 2+ files) -->
-                <VBox id="relationshipBox" visible="false" class="rptStepCard rptMapCard">
-                    <Title id="titleRelationship" text="Step 2 — Connect &amp; Preview Your Files" level="H3"/>
+                <Panel id="relationshipBox" expandable="true" expanded="true" visible="false" class="rptStepCard rptMapCard">
+                    <headerToolbar>
+                        <OverflowToolbar id="_IDGenOverflowToolbar2">
+                            <Title id="_IDGenTitle1" text="Step 2 — Connect &amp; Preview Your Files" level="H3"/>
+                            <ToolbarSpacer id="_IDGenToolbarSpacer1"/>
+                            <core:Icon id="step2DoneIcon" src="sap-icon://accept" color="#1a7f37" size="1rem" visible="false" class="sapUiSmallMarginEnd"/>
+                            <Text id="step2SummaryText" text="" visible="false"/>
+                        </OverflowToolbar>
+                    </headerToolbar>
+                    <content>
                     <Text id="_IDGenText1" text="Choose your primary file. Other files will join to it."
                         class="sapUiSmallMarginBottom"/>
 
@@ -185,11 +250,20 @@
                         </t:Table>
 
                     </VBox>
-                </VBox>
+                    </content>
+                </Panel>
 
                 <!-- Step 4: Pick Target Column -->
-                <VBox id="targetBox" visible="false" class="rptStepCard rptTargetCard">
-                    <Title id="titleTarget" text="Step 4 — What Do You Want to Predict?" level="H3"/>
+                <Panel id="targetBox" expandable="true" expanded="true" visible="false" class="rptStepCard rptTargetCard">
+                    <headerToolbar>
+                        <OverflowToolbar id="_IDGenOverflowToolbar3">
+                            <Title id="_IDGenTitle2" text="Step 4 — What Do You Want to Predict?" level="H3"/>
+                            <ToolbarSpacer id="_IDGenToolbarSpacer2"/>
+                            <core:Icon id="step3DoneIcon" src="sap-icon://accept" color="#1a7f37" size="1rem" visible="false" class="sapUiSmallMarginEnd"/>
+                            <Text id="step3SummaryText" text="" visible="false"/>
+                        </OverflowToolbar>
+                    </headerToolbar>
+                    <content>
                     <Text id="_IDGenText2" text="Select the column whose missing values RPT-1 should fill in."
                         class="sapUiSmallMarginBottom"/>
 
@@ -211,6 +285,19 @@
                             </items>
                         </SegmentedButton>
                     </HBox>
+
+                    <!-- Column exclusion -->
+                    <Panel id="excludeColumnsPanel" visible="false" expandable="true" expanded="false"
+                        headerText="Exclude Columns (optional)" class="sapUiSmallMarginTop">
+                        <content>
+                            <VBox id="_IDGenVBox8" class="sapUiSmallMargin">
+                                <Text id="_IDGenText" text="Selected columns will not be sent to RPT-1. Use this to remove noisy or irrelevant fields." class="sapUiSmallMarginBottom"/>
+                                <MultiComboBox id="excludeMultiComboBox" width="100%"
+                                    placeholder="Select columns to exclude..."
+                                    selectionChange="onExcludeColumnsChange"/>
+                            </VBox>
+                        </content>
+                    </Panel>
 
                     <!-- Prediction Plan panel -->
                     <Panel
@@ -263,7 +350,8 @@
                         visible="false"
                         showCloseButton="false"
                         class="sapUiSmallMarginTop"/>
-                </VBox>
+                    </content>
+                </Panel>
 
                 <!-- Run Button -->
                 <Button
@@ -274,7 +362,13 @@
                     visible="false"
                     class="sapUiMediumMarginTop rptRunBtn"
                     icon="sap-icon://initiative"/>
-                
+
+                <!-- Batch prediction progress -->
+                <VBox id="batchProgressBox" visible="false" class="rptBatchProgress sapUiMediumMarginTop">
+                    <Text id="batchProgressLabel" text="Preparing..." class="sapUiSmallMarginBottom"/>
+                    <ProgressIndicator id="batchProgress" percentValue="0" displayValue="0%" state="Information" width="100%"/>
+                </VBox>
+
                 <!-- Results -->
                 <VBox id="resultsBox" visible="false" class="rptStepCard rptResultsCard">
                     <Title id="titleResults" text="Step 6 — Prediction Results" level="H3"/>
@@ -315,13 +409,30 @@
 
                     <Text id="resultsHint" text="Predicted values are in blue. Row colour: green ≥80%, orange 55–79%, red &lt;55%." class="sapUiSmallMarginBottom"/>
 
+                    <MessageStrip
+                        id="lowConfidenceStrip"
+                        text=""
+                        visible="false"
+                        type="Warning"
+                        showCloseButton="true"
+                        class="sapUiSmallMarginBottom"/>
+
                     <t:Table
                         id="resultsTable"
-                        selectionMode="None"
+                        selectionMode="MultiToggle"
+                        enableSelectAll="true"
                         enableColumnReordering="true"
+                        beforeOpenContextMenu="onResultsBeforeOpenContextMenu"
                         class="sapUiSmallMarginTop">
+                        <t:contextMenu>
+                            <Menu id="resultsCellContextMenu">
+                                <items>
+                                    <MenuItem id="copyCellItem" text="Copy cell value" press="onCopyCellMenuPress"/>
+                                </items>
+                            </Menu>
+                        </t:contextMenu>
                         <t:rowMode>
-                            <rowmodes:Fixed id="resultsRowMode" rowCount="20"/>
+                            <rowmodes:Auto id="resultsRowMode" minRowCount="5"/>
                         </t:rowMode>
                         <t:extension>
                             <OverflowToolbar id="resultsToolbar">

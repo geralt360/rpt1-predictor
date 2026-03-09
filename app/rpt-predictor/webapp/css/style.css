@@ -216,3 +216,182 @@
     margin-top: 1.25rem !important;
     padding-top: 1rem !important;
 }
+
+/* =============================================================
+   Step Progress Indicator
+   ============================================================= */
+.rptStepIndicator.sapMHBox {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.07);
+    padding: 0.875rem 1.5rem !important;
+    margin-bottom: 1rem !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Each step node flexes to fill available width */
+.rptStepNode.sapMFlexBox {
+    flex: 1 !important;
+    min-width: 0;
+    cursor: default;
+}
+
+/* Circle badge */
+.rptStepNode .rptStepCircle.sapMText {
+    width: 2rem;
+    min-width: 2rem;
+    height: 2rem;
+    line-height: 2rem !important;
+    border-radius: 50%;
+    background: #E4EBF2;
+    color: #9CA3AF;
+    text-align: center !important;
+    font-weight: 700 !important;
+    font-size: 0.875rem !important;
+    margin: 0 auto !important;
+}
+
+/* Step label */
+.rptStepNode .rptStepLabel.sapMText {
+    font-size: 0.6875rem !important;
+    color: #9CA3AF !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    margin-top: 0.25rem;
+    white-space: nowrap;
+}
+
+/* Active state */
+.rptStepNode.rptStepActive .rptStepCircle.sapMText {
+    background: #0064D9;
+    color: #ffffff;
+}
+.rptStepNode.rptStepActive .rptStepLabel.sapMText {
+    color: #0064D9 !important;
+    font-weight: 700 !important;
+}
+
+/* Done state */
+.rptStepNode.rptStepDone .rptStepCircle.sapMText {
+    background: #107E3E;
+    color: #ffffff;
+}
+.rptStepNode.rptStepDone .rptStepLabel.sapMText {
+    color: #107E3E !important;
+    font-weight: 600 !important;
+}
+
+/* Skipped state (step 2 in single-file flow) */
+.rptStepNode.rptStepSkipped .rptStepCircle.sapMText {
+    background: #F0F3F7;
+    color: #D1D5DB;
+}
+.rptStepNode.rptStepSkipped .rptStepLabel.sapMText {
+    color: #D1D5DB !important;
+}
+
+/* Arrow connector */
+.rptStepArrow.sapUiIcon {
+    color: #C9D4E0;
+    font-size: 0.75rem !important;
+    flex-shrink: 0;
+    padding: 0 0.375rem;
+    margin-top: 0.575rem !important; /* align vertically with circle centre */
+}
+
+/* =============================================================
+   File Preview Cards
+   ============================================================= */
+.rptFileCard.sapMFlexBox {
+    background: #F6F9FD;
+    border: 1px solid #DDE5F0;
+    border-radius: 10px;
+    padding: 0.875rem 1.125rem !important;
+    margin-right: 0.875rem !important;
+    margin-bottom: 0.75rem !important;
+    min-width: 200px;
+    max-width: 280px;
+    transition: box-shadow 0.15s ease;
+}
+
+.rptFileCard.sapMFlexBox:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.09);
+}
+
+.rptFileCardTitle.sapMText {
+    font-weight: 700 !important;
+    font-size: 0.9375rem !important;
+    color: #0F1728 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 240px;
+}
+
+.rptFileCardBadge.sapMText {
+    background: #E8F0FD;
+    color: #0064D9;
+    border-radius: 999px;
+    padding: 0.125rem 0.625rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    margin-right: 0.375rem !important;
+    white-space: nowrap;
+}
+
+.rptFileCardSample.sapMText {
+    font-size: 0.75rem !important;
+    color: #6B7280 !important;
+    margin-top: 0.5rem;
+    font-style: italic;
+    word-break: break-word;
+}
+
+/* =============================================================
+   Batch Progress Box
+   ============================================================= */
+.rptBatchProgress {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.07);
+    border-left: 4px solid #0064D9;
+    padding: 1.25rem 1.75rem !important;
+}
+
+.rptBatchProgress .sapMText {
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+}
+
+/* =============================================================
+   Step card Panels — native sap.m.Panel expand/collapse
+   ============================================================= */
+
+/* Remove default Panel border so .rptStepCard styling is not doubled */
+.rptStepCard.sapMPanel {
+    border: none !important;
+}
+
+/* Header wrapper: transparent background, no bottom border */
+.rptStepCard.sapMPanel .sapMPanelWrappingDiv,
+.rptStepCard.sapMPanel .sapMPanelWrappingDivTb {
+    background: transparent !important;
+    border-bottom: none !important;
+    padding: 0 !important;
+    min-height: unset !important;
+}
+
+/* OverflowToolbar inside the panel header */
+.rptStepCard.sapMPanel .sapMOTB {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+/* Content area: slight top gap, no extra border */
+.rptStepCard.sapMPanel .sapMPanelContent {
+    padding: 0.75rem 0 0 0 !important;
+    border: none !important;
+}

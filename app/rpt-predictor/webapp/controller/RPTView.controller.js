@@ -2,16 +2,25 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageToast",
     "sap/m/MessageBox",
+    "sap/m/Token",
+    "sap/m/Text",
+    "sap/m/Label",
+    "sap/m/Button",
+    "sap/m/HBox",
+    "sap/m/VBox",
+    "sap/m/ObjectStatus",
+    "sap/ui/core/Item",
+    "sap/ui/table/Column",
     "sap/ui/export/Spreadsheet",
     "sap/ui/export/library",
     "sap/ui/model/json/JSONModel"
-], function (Controller, MessageToast, MessageBox, Spreadsheet, exportLibrary, JSONModel) {
+], function (Controller, MessageToast, MessageBox, Token, Text, Label, Button, HBox, VBox, ObjectStatus, CoreItem, TableColumn, Spreadsheet, exportLibrary, JSONModel) {
     "use strict";
 
-    const MAX_COLUMNS  = 64;
-    const WARN_COLUMNS = 50;
-    const MAX_CONTEXT  = 1500;
-    const BATCH_SIZE   = 500;
+    const MAX_COLUMNS  = 50;
+    const WARN_COLUMNS = 45;
+    const MAX_CONTEXT  = 2000;
+    const BATCH_SIZE   = 25;
 
     return Controller.extend("rptpredictor.rptpredictor.controller.RPTView", {
 
@@ -19,6 +28,8 @@ sap.ui.define([
 
         onInit: function () {
             this._initState();
+            this._restoreLastSession();
+            this._setStep(1);
         },
 
         _initState: function () {
@@ -33,6 +44,45 @@ sap.ui.define([
             this._joinedRows         = null;
             this._allRows            = null;
             this._targetColumn       = null;
+            this._allHeaders         = [];
+            this._excludedColumns    = new Set();
+            this._resultsColNames    = [];
+            this._contextMenuCell    = null;
+            this._currentStep        = 1;
+            this._darkMode           = false;
+            this._stepSummaries      = {};
+        },
+
+        // ─── Theme & Step Navigation ─────────────────────────────────────────────
+
+        _setStep: function (n) {
+            this._currentStep = n;
+            const singleFile  = this._filesData.length <= 1;
+            for (let step = 1; step <= 5; step++) {
+                const node = this.byId("stepNode" + step);
+                if (!node) continue;
+                node.removeStyleClass("rptStepActive").removeStyleClass("rptStepDone").removeStyleClass("rptStepSkipped");
+                if (singleFile && step === 2) {
+                    node.addStyleClass("rptStepSkipped");
+                } else if (step < n) {
+                    node.addStyleClass("rptStepDone");
+                } else if (step === n) {
+                    node.addStyleClass("rptStepActive");
+                }
+            }
+        },
+
+        onToggleDarkMode: function () {
+            const core    = sap.ui.getCore();
+            const current = core.getConfiguration().getTheme();
+            const isDark  = current.endsWith("_dark");
+            const next    = isDark ? current.slice(0, -5) : current + "_dark";
+            core.applyTheme(next);
+            this._darkMode = !isDark;
+            const btn = this.byId("darkModeBtn");
+            btn.setPressed(!isDark);
+            btn.setTooltip(!isDark ? "Switch to light mode" : "Switch to dark mode");
+            try { localStorage.setItem("rpt1_dark_mode", String(!isDark)); } catch (e) {}
         },
 
         // ─── File Upload ─────────────────────────────────────────────────────────
@@ -115,7 +165,9 @@ sap.ui.define([
         },
 
         _onAllFilesRead: function () {
+            this.byId("lastSessionStrip").setVisible(false);
             this._updateLoadedFilesChips();
+            this._step1Summary();
             if (this._filesData.length === 1) {
                 // Single file — skip mapper, go straight to prediction setup
                 this._joinedRows = this._filesData[0].rows;
@@ -123,25 +175,76 @@ sap.ui.define([
             } else if (this._filesData.length > 1) {
                 this._showRelationshipMapper();
             }
+            this._saveLastSession();
+        },
+
+        _step1Summary: function () {
+            if (this._filesData.length === 0) return;
+            const names = this._filesData.map(f => f.name).join(" · ");
+            this._collapseStep(1, `${names}  ·  ${this._filesData.length} file(s) loaded`);
         },
 
         _updateLoadedFilesChips: function () {
             const chipsBox = this.byId("loadedFilesChips");
             chipsBox.destroyItems();
 
-            this._filesData.forEach((file, idx) => {
-                const token = new sap.m.Token({ text: file.name, editable: true });
-                // Attach with current idx — always fresh since we rebuild entirely
-                token.attachDelete(() => this._removeFile(idx));
+            this._filesData.forEach(file => {
+                const token = new Token({ text: file.name, editable: true });
+                // Match by name so removal is always correct regardless of array order
+                token.attachDelete(() => this._removeFile(file.name));
                 chipsBox.addItem(token);
             });
 
             const hasFiles = this._filesData.length > 0;
             this.byId("loadedFilesBox").setVisible(hasFiles);
             this.byId("clearFilesBtn").setVisible(hasFiles);
+            this._updateFilePreviewCards();
         },
 
-        _removeFile: function (idx) {
+        _updateFilePreviewCards: function () {
+            const section  = this.byId("fileCardsSection");
+            const cardsBox = this.byId("fileCardsBox");
+            cardsBox.destroyItems();
+
+            if (this._filesData.length === 0) {
+                section.setVisible(false);
+                return;
+            }
+
+            this._filesData.forEach(file => {
+                const sampleCols = file.headers.slice(0, 3);
+                const sampleRows = file.rows.slice(0, 2);
+                const sampleText = sampleCols.map(col => {
+                    const vals = sampleRows
+                        .map(r => r[col])
+                        .filter(v => v !== "" && v != null)
+                        .join(", ");
+                    return `${col}: ${vals || "—"}`;
+                }).join("  ·  ");
+
+                const card = new VBox({
+                    items: [
+                        new Text({ text: file.name }).addStyleClass("rptFileCardTitle"),
+                        new HBox({
+                            items: [
+                                new Text({ text: `${file.rows.length} rows` }).addStyleClass("rptFileCardBadge"),
+                                new Text({ text: `${file.headers.length} cols` }).addStyleClass("rptFileCardBadge")
+                            ]
+                        }).addStyleClass("sapUiTinyMarginTop"),
+                        new Text({ text: sampleText, wrapping: true }).addStyleClass("rptFileCardSample")
+                    ]
+                }).addStyleClass("rptFileCard");
+                cardsBox.addItem(card);
+            });
+
+            section.setVisible(true);
+        },
+
+        _removeFile: function (nameOrIdx) {
+            const idx = typeof nameOrIdx === "string"
+                ? this._filesData.findIndex(f => f.name === nameOrIdx)
+                : nameOrIdx;
+            if (idx === -1) return;
             this._filesData.splice(idx, 1);
             this._updateLoadedFilesChips();
 
@@ -149,11 +252,29 @@ sap.ui.define([
                 this._resetAll();
             } else if (this._filesData.length === 1) {
                 this.byId("relationshipBox").setVisible(false);
+                this._step1Summary();
                 this._joinedRows = this._filesData[0].rows;
                 this._showTargetStep(this._filesData[0].headers);
             } else {
+                this._step1Summary();
                 this._showRelationshipMapper();
             }
+        },
+
+        _collapseStep: function (stepNum, summaryText) {
+            if (summaryText !== undefined) this._stepSummaries[stepNum] = summaryText;
+            const text = this._stepSummaries[stepNum] || "";
+            this.byId("step" + stepNum + "SummaryText").setText(text).setVisible(!!text);
+            this.byId("step" + stepNum + "DoneIcon").setVisible(!!text);
+            this._getStepPanel(stepNum).setExpanded(false);
+        },
+
+        _expandStep: function (stepNum) {
+            this._getStepPanel(stepNum).setExpanded(true);
+        },
+
+        _getStepPanel: function (n) {
+            return this.byId(["uploadCard", "relationshipBox", "targetBox"][n - 1]);
         },
 
         _resetAll: function () {
@@ -161,26 +282,39 @@ sap.ui.define([
 
             [
                 "relationshipBox", "targetBox", "runButton", "resultsBox",
-                "loadedFilesBox", "clearFilesBtn", "previewSection"
+                "loadedFilesBox", "clearFilesBtn", "previewSection", "batchProgressBox"
             ].forEach(id => this.byId(id).setVisible(false));
 
             this.byId("proceedButton").setVisible(false);
             this.byId("continueToTargetButton").setVisible(false);
 
+            [1, 2, 3].forEach(n => {
+                const panel = this._getStepPanel(n);
+                if (panel) panel.setExpanded(true);
+                const txt = this.byId("step" + n + "SummaryText");
+                if (txt) txt.setText("").setVisible(false);
+                const icon = this.byId("step" + n + "DoneIcon");
+                if (icon) icon.setVisible(false);
+            });
+
             const uploader = this.byId("fileUploader");
             if (uploader.clear) uploader.clear();
+
+            this._updateFilePreviewCards();
+            this._setStep(1);
         },
 
         // ─── Relationship Mapper ──────────────────────────────────────────────────
 
         _showRelationshipMapper: function () {
             this._primaryFileIndex = 0;
+            this._setStep(2);
 
             // Populate primary file picker
             const primarySelect = this.byId("primaryFileSelect");
             primarySelect.destroyItems();
             this._filesData.forEach((file, i) => {
-                primarySelect.addItem(new sap.ui.core.Item({ key: String(i), text: file.name }));
+                primarySelect.addItem(new CoreItem({ key: String(i), text: file.name }));
             });
             primarySelect.setSelectedKey("0");
 
@@ -226,7 +360,7 @@ sap.ui.define([
             container.destroyItems();
 
             if (this._detectedLinks.length === 0) {
-                container.addItem(new sap.m.Text({
+                container.addItem(new Text({
                     text: "No relationships detected automatically. Add one manually below."
                 }));
                 return;
@@ -240,35 +374,35 @@ sap.ui.define([
                 const fileAName = (files[link.fileA] || {}).name || "?";
                 const fileBName = (files[link.fileB] || {}).name || "?";
 
-                const row = new sap.m.HBox({
+                const row = new HBox({
                     alignItems: "Center",
                     items: [
-                        new sap.m.Text({ text: isAccepted ? "✅" : "🟡", width: "2rem" }),
-                        new sap.m.VBox({
+                        new Text({ text: isAccepted ? "✅" : "🟡", width: "2rem" }),
+                        new VBox({
                             width: "60%",
                             items: [
-                                new sap.m.Text({
+                                new Text({
                                     text: `${fileAName}.${link.colA}  →  ${fileBName}.${link.colB}`
                                 }),
-                                new sap.m.Text({
+                                new Text({
                                     text: `Confidence: ${link.level} (${link.confidence})`
                                 }).addStyleClass("sapUiSmallText")
                             ]
                         }),
-                        new sap.m.HBox({
+                        new HBox({
                             items: [
                                 isAccepted
-                                    ? new sap.m.Text({ text: "" })
-                                    : new sap.m.Button({
+                                    ? new Text({ text: "" })
+                                    : new Button({
                                         text: "Accept",
                                         type: "Accept",
                                         press: () => this._onAcceptLink(idx)
                                     }).addStyleClass("sapUiSmallMarginEnd"),
-                                new sap.m.Button({
+                                new Button({
                                     text: "Edit",
                                     press: () => this._onEditLink(idx)
                                 }).addStyleClass("sapUiSmallMarginEnd"),
-                                new sap.m.Button({
+                                new Button({
                                     text: "✕",
                                     type: "Reject",
                                     press: () => this._onDeleteLink(idx)
@@ -319,14 +453,14 @@ sap.ui.define([
             const primaryColSelect = this.byId("editPrimaryColSelect");
             primaryColSelect.destroyItems();
             files[primary].headers.forEach(col => {
-                primaryColSelect.addItem(new sap.ui.core.Item({ key: col, text: col }));
+                primaryColSelect.addItem(new CoreItem({ key: col, text: col }));
             });
 
             const secFileSelect = this.byId("editSecondaryFileSelect");
             secFileSelect.destroyItems();
             files.forEach((file, i) => {
                 if (i !== primary) {
-                    secFileSelect.addItem(new sap.ui.core.Item({ key: String(i), text: file.name }));
+                    secFileSelect.addItem(new CoreItem({ key: String(i), text: file.name }));
                 }
             });
 
@@ -349,7 +483,7 @@ sap.ui.define([
             secColSelect.destroyItems();
             if (isNaN(secFileIdx) || !this._filesData[secFileIdx]) return;
             this._filesData[secFileIdx].headers.forEach(col => {
-                secColSelect.addItem(new sap.ui.core.Item({ key: col, text: col }));
+                secColSelect.addItem(new CoreItem({ key: col, text: col }));
             });
         },
 
@@ -408,6 +542,15 @@ sap.ui.define([
 
         onContinueToTarget: function () {
             const headers = Object.keys((this._joinedRows[0] || {}));
+
+            // Collapse step 2 with summary
+            const linkCount = this._acceptedLinks.length;
+            const rowCount  = this._joinedRows.length;
+            const colCount  = headers.length;
+            this._collapseStep(2,
+                linkCount + " link(s) · " + rowCount + " rows · " + colCount + " columns after join"
+            );
+
             this._showTargetStep(headers);
             this.byId("previewSection").setVisible(false);
             this.byId("proceedButton").setVisible(false);
@@ -527,9 +670,9 @@ sap.ui.define([
             oTable.destroyColumns();
             oTable.bindRows("preview>/rows");
             headers.forEach(col => {
-                oTable.addColumn(new sap.ui.table.Column({
-                    label:          new sap.m.Label({ text: col }),
-                    template:       new sap.m.Text({ text: `{preview>${col}}`, wrapping: false }),
+                oTable.addColumn(new TableColumn({
+                    label:          new Label({ text: col }),
+                    template:       new Text({ text: `{preview>${col}}`, wrapping: false }),
                     sortProperty:   col,
                     filterProperty: col,
                     width:          "150px"
@@ -563,21 +706,27 @@ sap.ui.define([
         _showTargetStep: function (headers) {
             const select = this.byId("targetColumnSelect");
             select.destroyItems();
-            select.addItem(new sap.ui.core.Item({ key: "", text: "-- Select a column --" }));
+            select.addItem(new CoreItem({ key: "", text: "-- Select a column --" }));
             headers.forEach(col => {
-                select.addItem(new sap.ui.core.Item({ key: col, text: col }));
+                select.addItem(new CoreItem({ key: col, text: col }));
             });
+
+            this._allHeaders      = headers.slice();
+            this._excludedColumns = new Set();
 
             this.byId("taskTypeOverride").setSelectedKey("auto");
             this.byId("detectedTypeText").setText("—");
             this.byId("predictionPlanPanel").setVisible(false);
             this.byId("lowContextStrip").setVisible(false);
             this.byId("runButton").setVisible(false);
+            this._setStep(3);
             this.byId("targetBox").setVisible(true);
+            this.byId("excludeColumnsPanel").setVisible(true);
 
             // Auto-select first column and show prediction plan immediately
             if (headers.length > 0) {
                 select.setSelectedKey(headers[0]);
+                this._populateExcludeList(headers[0]);
                 this._updatePredictionPlan(headers[0]);
             }
         },
@@ -589,12 +738,27 @@ sap.ui.define([
                 this.byId("runButton").setVisible(false);
                 return;
             }
+            this._populateExcludeList(targetCol);
             this._updatePredictionPlan(targetCol);
         },
 
         onTypeOverrideChange: function () {
             const targetCol = this.byId("targetColumnSelect").getSelectedKey();
             if (targetCol) this._updatePredictionPlan(targetCol);
+        },
+
+        _populateExcludeList: function (targetCol) {
+            const mcb  = this.byId("excludeMultiComboBox");
+            const cols = (this._allHeaders || []).filter(h => h !== targetCol);
+            mcb.destroyItems();
+            cols.forEach(col => mcb.addItem(new CoreItem({ key: col, text: col })));
+            // Re-apply previously selected exclusions that are still available
+            const valid = [...this._excludedColumns].filter(c => cols.includes(c));
+            mcb.setSelectedKeys(valid);
+        },
+
+        onExcludeColumnsChange: function () {
+            this._excludedColumns = new Set(this.byId("excludeMultiComboBox").getSelectedKeys());
         },
 
         _detectTargetType: function (rows, targetCol) {
@@ -687,24 +851,44 @@ sap.ui.define([
             const sampledContext = this._getStratifiedContext(contextRows, targetColumn, taskType);
             const batches        = this._buildBatches(sampledContext, predictRows, BATCH_SIZE);
 
+            const progressBox = this.byId("batchProgressBox");
+            const progressBar = this.byId("batchProgress");
+            const progressLbl = this.byId("batchProgressLabel");
+            progressBox.setVisible(true);
+            progressBar.setPercentValue(0);
+            progressBar.setDisplayValue("0%");
+            progressLbl.setText("Preparing batch data...");
+            this._setStep(4);
+
+            const detectedTypeSummary = this._getEffectiveType(this._detectTargetType(rows, targetColumn));
+            this._collapseStep(3,
+                "Target: " + targetColumn +
+                " · " + detectedTypeSummary.charAt(0).toUpperCase() + detectedTypeSummary.slice(1) +
+                " · " + predictRows.length + " rows to predict"
+            );
+
             this.getView().setBusy(true);
             try {
-                const predMap = await this._runBatches(batches, targetColumn, taskType);
+                const predMap = await this._runBatches(batches, targetColumn, taskType, (done, total) => {
+                    const pct = Math.round((done / total) * 100);
+                    progressBar.setPercentValue(pct);
+                    progressBar.setDisplayValue(`${pct}%`);
+                    progressLbl.setText(`Batch ${done} of ${total} complete`);
+                });
                 this._displayResults(predMap, rows, targetColumn);
             } catch (err) {
                 MessageBox.error(`Prediction failed: ${err.message}`);
             } finally {
+                progressBox.setVisible(false);
                 this.getView().setBusy(false);
             }
         },
 
         // Iterative async batch runner — avoids recursive call stack growth
-        _runBatches: async function (batches, targetColumn, taskType) {
+        _runBatches: async function (batches, targetColumn, taskType, onProgress) {
             const predMap = {};
 
             for (let i = 0; i < batches.length; i++) {
-                MessageToast.show(`Batch ${i + 1} of ${batches.length}...`);
-
                 const batch   = batches[i];
                 const payload = this._buildRPT1Payload(batch.context, batch.predict, targetColumn, taskType);
 
@@ -719,12 +903,7 @@ sap.ui.define([
                 }
 
                 const result = await response.json();
-                let parsed;
-                try {
-                    parsed = JSON.parse(result.value);
-                } catch {
-                    throw new Error(`Batch ${i + 1}: unexpected response format`);
-                }
+                const parsed = JSON.parse(result.value);
 
                 // Handle both RPT-1 response shapes defensively
                 const predictions =
@@ -743,6 +922,8 @@ sap.ui.define([
                         confidence: Math.round(predData.confidence * 100)
                     };
                 });
+
+                if (onProgress) onProgress(i + 1, batches.length);
             }
 
             return predMap;
@@ -817,6 +998,7 @@ sap.ui.define([
             this._allRows      = mergedRows;
             this._targetColumn = targetColumn;
 
+            this._setStep(5);
             this.byId("resultsBox").setVisible(true);
             sap.ui.getCore().applyChanges(); // flush DOM so table container renders before bindRows
             this._updateSummaryCard(mergedRows);
@@ -855,6 +1037,7 @@ sap.ui.define([
             const colNames = Object.keys(rows[0]).filter(
                 k => k !== "_predicted" && k !== "_confidence" && k !== "_origIndex" && k !== "_rowIdx"
             );
+            this._resultsColNames = colNames;
 
             const modelData = displayRows.map(row => {
                 const r = {};
@@ -878,21 +1061,23 @@ sap.ui.define([
 
             colNames.forEach(col => {
                 const isTarget = col === targetColumn;
-                oTable.addColumn(new sap.ui.table.Column({
-                    label:        new sap.m.Label({ text: col }),
-                    template:     isTarget
-                        ? new sap.m.ObjectStatus({ text: `{results>${col}}`, state: "{results>_targetState}" })
-                        : new sap.m.Text({ text: `{results>${col}}`, wrapping: false }),
-                    sortProperty: col,
-                    width:        "150px"
+                oTable.addColumn(new TableColumn({
+                    label:          new Label({ text: col }),
+                    template:       isTarget
+                        ? new ObjectStatus({ text: `{results>${col}}`, state: "{results>_targetState}" })
+                        : new Text({ text: `{results>${col}}`, wrapping: false }),
+                    sortProperty:   col,
+                    filterProperty: col,
+                    width:          "150px"
                 }));
             });
 
-            oTable.addColumn(new sap.ui.table.Column({
-                label:        new sap.m.Label({ text: "Confidence" }),
-                template:     new sap.m.Text({ text: "{results>_confidenceDisplay}", wrapping: false }),
-                sortProperty: "_confidence",
-                width:        "120px"
+            oTable.addColumn(new TableColumn({
+                label:          new Label({ text: "Confidence" }),
+                template:       new Text({ text: "{results>_confidenceDisplay}", wrapping: false }),
+                sortProperty:   "_confidence",
+                filterProperty: "_confidenceDisplay",
+                width:          "120px"
             }));
         },
 
@@ -902,6 +1087,24 @@ sap.ui.define([
             this.byId("summaryHigh").setText(String(predicted.filter(r => r._confidence >= 80).length));
             this.byId("summaryMedium").setText(String(predicted.filter(r => r._confidence >= 55 && r._confidence < 80).length));
             this.byId("summaryLow").setText(String(predicted.filter(r => r._confidence < 55).length));
+
+            const lowConfStrip = this.byId("lowConfidenceStrip");
+            if (predicted.length > 0) {
+                const avgConf = Math.round(
+                    predicted.reduce((sum, r) => sum + r._confidence, 0) / predicted.length
+                );
+                if (avgConf < 60) {
+                    lowConfStrip.setText(
+                        `⚠️ Average confidence is ${avgConf}%. Consider improving context data quality ` +
+                        `— add more labeled rows or ensure better variety in your training data.`
+                    );
+                    lowConfStrip.setVisible(true);
+                } else {
+                    lowConfStrip.setVisible(false);
+                }
+            } else {
+                lowConfStrip.setVisible(false);
+            }
         },
 
         onConfidenceFilterChange: function () {
@@ -917,13 +1120,63 @@ sap.ui.define([
             }
         },
 
+        onResultsBeforeOpenContextMenu: function (oEvent) {
+            this._contextMenuCell = {
+                rowIndex:    oEvent.getParameter("rowIndex"),
+                columnIndex: oEvent.getParameter("columnIndex")
+            };
+        },
+
+        onCopyCellMenuPress: function () {
+            const cell = this._contextMenuCell;
+            if (!cell || cell.rowIndex < 0) return;
+            const oTable   = this.byId("resultsTable");
+            const oContext = oTable.getContextByIndex(cell.rowIndex);
+            if (!oContext) return;
+            const rowData = oContext.getObject();
+            const cols    = [...(this._resultsColNames || []), "_confidenceDisplay"];
+            const key     = cols[cell.columnIndex];
+            if (!key) return;
+            const val  = rowData[key];
+            const text = (val !== undefined && val !== null) ? String(val) : "";
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text)
+                    .then(() => MessageToast.show("Copied!"))
+                    .catch(() => MessageToast.show("Copy unavailable in this context."));
+            } else {
+                MessageToast.show("Copy unavailable in this context.");
+            }
+        },
+
         // ─── Export ──────────────────────────────────────────────────────────────
 
+        // Returns the currently filtered+searched rows — shared by both export handlers
+        _getExportRows: function () {
+            if (!this._allRows || !this._targetColumn) return [];
+            const filterKey   = this.byId("confidenceFilter").getSelectedKey();
+            const threshold   = filterKey === "all" ? 0 : parseInt(filterKey, 10);
+            const searchQuery = this._resultsSearchQuery || "";
+
+            let rows = this._allRows.filter(row =>
+                !row._predicted || filterKey === "all" || row._confidence >= threshold
+            );
+            if (searchQuery) {
+                rows = rows.filter(row =>
+                    Object.keys(row).some(k => {
+                        if (k.charAt(0) === "_") return false;
+                        const v = row[k];
+                        return v !== undefined && v !== null && String(v).toLowerCase().indexOf(searchQuery) > -1;
+                    })
+                );
+            }
+            return rows;
+        },
+
         onExportExcel: function () {
-            const rows = this._allRows;
+            const rows = this._getExportRows();
             if (!rows || rows.length === 0) { MessageToast.show("No results to export."); return; }
 
-            const colNames = Object.keys(rows[0]).filter(
+            const colNames = Object.keys(this._allRows[0]).filter(
                 k => k !== "_predicted" && k !== "_confidence" && k !== "_origIndex" && k !== "_rowIdx"
             );
             const columns = [
@@ -945,10 +1198,10 @@ sap.ui.define([
         },
 
         onDownloadCSV: function () {
-            const rows = this._allRows;
+            const rows = this._getExportRows();
             if (!rows || rows.length === 0) { MessageToast.show("No results to download."); return; }
 
-            const colNames = Object.keys(rows[0]).filter(
+            const colNames = Object.keys(this._allRows[0]).filter(
                 k => k !== "_predicted" && k !== "_confidence" && k !== "_origIndex" && k !== "_rowIdx"
             );
             const exportRows = rows.map(row => {
@@ -1059,17 +1312,24 @@ sap.ui.define([
         // ─── RPT-1 Payload Builder ────────────────────────────────────────────────
 
         _buildRPT1Payload: function (contextRows, predictRows, targetColumn, taskType) {
+            const excluded = this._excludedColumns || new Set();
+            const cleanRow = (row) => {
+                const r = Object.assign({}, row);
+                excluded.forEach(col => delete r[col]);
+                return r;
+            };
+
             const allRows = [];
 
             contextRows.forEach((row, i) => {
-                const r = Object.assign({}, row);
+                const r = cleanRow(row);
                 delete r._rowIdx;
                 r["_index"] = `ctx_${i}`;
                 allRows.push(r);
             });
 
             predictRows.forEach(row => {
-                const r      = Object.assign({}, row);
+                const r      = cleanRow(row);
                 const rowIdx = r._rowIdx !== undefined ? String(r._rowIdx) : String(allRows.length);
                 delete r._rowIdx;
                 r["_index"]       = rowIdx;
@@ -1097,6 +1357,43 @@ sap.ui.define([
                 rows:         allRows,
                 data_schema:  schema
             };
+        },
+
+        // ─── Session Persistence ──────────────────────────────────────────────────
+
+        _saveLastSession: function () {
+            try {
+                localStorage.setItem("rpt1_last_session", JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    files:     this._filesData.map(f => ({ name: f.name, headers: f.headers }))
+                }));
+            } catch (e) { /* quota or private-browsing — safe to ignore */ }
+        },
+
+        _restoreLastSession: function () {
+            try {
+                const darkPref = localStorage.getItem("rpt1_dark_mode");
+                if (darkPref === "true") {
+                    const core    = sap.ui.getCore();
+                    const current = core.getConfiguration().getTheme();
+                    if (!current.endsWith("_dark")) core.applyTheme(current + "_dark");
+                    this._darkMode = true;
+                    const btn = this.byId("darkModeBtn");
+                    btn.setPressed(true);
+                    btn.setTooltip("Switch to light mode");
+                }
+            } catch (e) {}
+            try {
+                const raw = localStorage.getItem("rpt1_last_session");
+                if (!raw) return;
+                const data = JSON.parse(raw);
+                if (!data || !Array.isArray(data.files) || data.files.length === 0) return;
+                const date  = new Date(data.timestamp).toLocaleDateString();
+                const names = data.files.map(f => `${f.name} (${f.headers.length} cols)`).join(" · ");
+                const strip = this.byId("lastSessionStrip");
+                strip.setText(`Last session on ${date}: ${names}`);
+                strip.setVisible(true);
+            } catch (e) { /* corrupt data — safe to ignore */ }
         },
 
         // ─── CSV Parser (RFC 4180 compliant) ─────────────────────────────────────
